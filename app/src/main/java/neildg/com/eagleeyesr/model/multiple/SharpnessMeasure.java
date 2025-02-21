@@ -55,6 +55,7 @@ public class SharpnessMeasure {
         List<Integer> indexList = new ArrayList<>();
 
         for(int i = 0; i <  edgeMatList.length; i++) {
+            Log.d(TAG, "Sharpness for image " + i + ": " + sharpnessResult.sharpnessValues[i]);
             if(sharpnessResult.sharpnessValues[i] >= sharpnessResult.mean) {
                 trimMatList.add(sharpnessResult.sharpnessValues[i]);
                 indexList.add(i);
@@ -110,6 +111,7 @@ public class SharpnessMeasure {
     public static double measure(Mat edgeMat) {
         int withValues = Core.countNonZero(edgeMat);
         int dimension = edgeMat.cols() * edgeMat.rows();
+        Log.i(TAG, "With values: " + withValues);
 
         double dSharpness = withValues * 1.0 / dimension;
 

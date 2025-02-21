@@ -6,7 +6,7 @@ android {
         config {
             keyAlias 'NeilDG'
             keyPassword '123456'
-            storeFile file('C:/Users/Kenshin/Desktop/EagleEyeSR/sr_keystore.jks') // Replace this with own path
+            storeFile file('C:/Development/EagleEyeSR/sr_keystore.jks') // Replace this with own path
             storePassword '123456'
         }
     }
@@ -14,7 +14,7 @@ android {
     buildToolsVersion '26.0.2'
     defaultConfig {
         applicationId 'neildg.com.eagleeyesr'
-        minSdkVersion 17
+        minSdkVersion 21
         targetSdkVersion 26
         versionCode 10
         versionName '01.03.05'
@@ -23,6 +23,7 @@ android {
         ndk {
             moduleName "hello"
         }
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     sourceSets.main{
@@ -80,6 +81,7 @@ repositories {
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
+    testImplementation project(':app')
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:27.1.1'
     compile 'com.android.support:design:27.1.1'

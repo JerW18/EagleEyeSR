@@ -27,7 +27,7 @@ public class YangFilterFusionOperator implements IOperator {
     private Mat[] combineMatList;
     private Mat outputMat;
 
-    public YangFilterFusionOperator(Mat[] combineMatList) {
+    public  YangFilterFusionOperator(Mat[] combineMatList) {
         this.combineMatList = combineMatList;
     }
 

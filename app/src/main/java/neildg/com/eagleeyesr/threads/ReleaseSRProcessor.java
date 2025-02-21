@@ -2,13 +2,17 @@ package neildg.com.eagleeyesr.threads;
 
 import android.util.Log;
 
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.ml.NormalBayesClassifier;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.Semaphore;
 
+import neildg.com.eagleeyesr.camera2.util.ProcessorTest;
+import neildg.com.eagleeyesr.camera2.util.Util;
 import neildg.com.eagleeyesr.constants.FilenameConstants;
 import neildg.com.eagleeyesr.constants.ParameterConfig;
 import neildg.com.eagleeyesr.io.FileImageReader;
@@ -51,6 +55,7 @@ public class ReleaseSRProcessor extends Thread{
 
     @Override
     public void run() {
+        ImageInputMap.getPaths();
 
         TimeMeasure srTimeMeasure = TimeMeasureManager.getInstance().newTimeMeasure(TimeMeasureManager.MEASURE_SR_TIME);
         TimeMeasure edgeDetectionMeasure = TimeMeasureManager.getInstance().newTimeMeasure(TimeMeasureManager.EDGE_DETECTION_TIME);
@@ -69,6 +74,11 @@ public class ReleaseSRProcessor extends Thread{
         SharpnessMeasure.initialize();
         edgeDetectionMeasure.timeStart();
 
+        for(int i = 0; i < 10; i++) {
+            ProcessorTest.processImage(ImageInputMap.getInputImage(i));
+        }
+
+        Log.d(TAG, "Reading energy...");
         Mat[] energyInputMatList = new Mat[ImageInputMap.numImages()];
         InputImageEnergyReader[] energyReaders = new InputImageEnergyReader[energyInputMatList.length];
         //load images and use Y channel as input for succeeding operators
@@ -82,6 +92,7 @@ public class ReleaseSRProcessor extends Thread{
             energySem.acquire(energyInputMatList.length);
             for(int i = 0; i < energyReaders.length; i++) {
                 energyInputMatList[i] = energyReaders[i].getOutputMat();
+                Log.d(TAG, "With values after energy reading: " + Core.countNonZero(energyInputMatList[i]));
             }
 
 
@@ -92,6 +103,18 @@ public class ReleaseSRProcessor extends Thread{
 
         ProgressDialogHandler.getInstance().showProcessDialog("Pre-process", "Analyzing images", 15.0f);
 
+
+        for (Mat mat : energyInputMatList) {
+            Log.d(TAG, "With values after energy reading, before yang filter: " + Core.countNonZero(mat));
+        }
+        for (Mat mat : energyInputMatList) {
+            Util.printPixelValues(mat);
+        }
+
+        Log.d(TAG, "Applying Filter...");
+        for (Mat mat : energyInputMatList) {
+            Util.printPixelValues(mat);
+        }
         //extract features
         YangFilter yangFilter = new YangFilter(energyInputMatList);
         yangFilter.perform();
@@ -101,13 +124,32 @@ public class ReleaseSRProcessor extends Thread{
         //release energy input mat list
         MatMemory.releaseAll(energyInputMatList, false);
 
+        for (Mat mat : yangFilter.getEdgeMatList()) {
+            Log.d(TAG, "With values after yang filter: " + Core.countNonZero(mat));
+        }
+        for (Mat mat : yangFilter.getEdgeMatList()) {
+            Util.printPixelValues(mat);
+        }
+
         selectionMeasure.timeStart();
         //remeasure sharpness result without the image ground-truth
+        Log.d(TAG, "Filteredmatlist length: " + yangFilter.getEdgeMatList().length);
+        // IMPORTANT: performSuperResolutionStartsHere
+        for (Mat mat : yangFilter.getEdgeMatList()) {
+            Util.printPixelValues(mat);
+        }
+
         SharpnessMeasure.SharpnessResult sharpnessResult = SharpnessMeasure.getSharedInstance().measureSharpness(yangFilter.getEdgeMatList());
 
         //trim the input list from the measured sharpness mean
         Integer[] inputIndices = SharpnessMeasure.getSharedInstance().trimMatList(ImageInputMap.numImages(), sharpnessResult, 0.0);
         Mat[] rgbInputMatList = new Mat[inputIndices.length];
+
+        Log.d(TAG, "Least Index: " + String.valueOf(sharpnessResult.getLeastIndex()));
+        Log.d(TAG, "Best Index: " + String.valueOf(sharpnessResult.getBestIndex()));
+        Log.d(TAG, "Mean Energy: " + String.valueOf(sharpnessResult.getMean()));
+        Log.d(TAG, "Trimmed Indexes: " + Arrays.toString(sharpnessResult.getTrimmedIndexes()));
+        Log.d(TAG, "Input Indices: " + Arrays.toString(inputIndices));
 
         selectionMeasure.timeEnd();
 
@@ -130,6 +172,7 @@ public class ReleaseSRProcessor extends Thread{
             }
         }
         sharpeningMeasure.timeEnd();
+        Log.d(TAG, Arrays.toString(rgbInputMatList));
         Log.d(TAG, "RGB INPUT LENGTH: "+rgbInputMatList.length+ " Best index: " +bestIndex);
 
         this.performActualSuperres(rgbInputMatList, inputIndices, bestIndex, false);
@@ -178,7 +221,7 @@ public class ReleaseSRProcessor extends Thread{
 
     }
 
-    private void performFullSRMode(Mat[] rgbInputMatList, Integer[] inputIndices, int bestIndex, boolean debug) {
+    public void performFullSRMode(Mat[] rgbInputMatList, Integer[] inputIndices, int bestIndex, boolean debug) {
         //perform feature matching of LR images against the first image as reference mat.
         int warpChoice = ParameterConfig.getPrefsInt(ParameterConfig.WARP_CHOICE_KEY, WarpingConstants.BEST_ALIGNMENT);
         //perform perspective warping and alignment
@@ -293,6 +336,17 @@ public class ReleaseSRProcessor extends Thread{
         }
     }
 
+    private static void logMatPixelValues(Mat mat, int rows, int cols) {
+        for (int i = 0; i < Math.min(rows, mat.rows()); i++) {
+            StringBuilder rowValues = new StringBuilder();
+            for (int j = 0; j < Math.min(cols, mat.cols()); j++) {
+                double[] pixel = mat.get(i, j);
+                rowValues.append(Arrays.toString(pixel)).append(" ");
+            }
+            Log.d(TAG, "Row " + i + ": " + rowValues.toString());
+        }
+    }
+
     public static String[] assessImageWarpResults(int index, int alignmentUsed, String[] warpedImageNames, String[] medianAlignedNames, boolean useLocalDir) {
         if(alignmentUsed == WarpingConstants.BEST_ALIGNMENT) {
             Mat referenceMat;
@@ -303,6 +357,10 @@ public class ReleaseSRProcessor extends Thread{
             else {
               referenceMat  = FileImageReader.getInstance().imReadFullPath(ImageInputMap.getInputImage(index));
             }
+
+            // Log reference image pixel values
+            Log.d(TAG, "Reference image pixel values (first 10x10 block):");
+            logMatPixelValues(referenceMat, 10, 10);
 
             WarpResultEvaluator warpResultEvaluator = new WarpResultEvaluator(referenceMat, warpedImageNames, medianAlignedNames);
             warpResultEvaluator.perform();
@@ -317,17 +375,17 @@ public class ReleaseSRProcessor extends Thread{
 
     }
 
-    private void performAffineWarping(Mat referenceMat, Mat[] candidateMatList, Mat[] imagesToWarpList) {
-        ProgressDialogHandler.getInstance().showProcessDialog("Processing", "Performing image warping", 30.0f);
-
-        //perform affine warping
-        AffineWarpingOperator warpingOperator = new AffineWarpingOperator(referenceMat, candidateMatList, imagesToWarpList);
-        warpingOperator.perform();
-
-        MatMemory.releaseAll(candidateMatList, false);
-        MatMemory.releaseAll(imagesToWarpList, false);
-        MatMemory.releaseAll(warpingOperator.getWarpedMatList(), true);
-    }
+//    private void performAffineWarping(Mat referenceMat, Mat[] candidateMatList, Mat[] imagesToWarpList) {
+//        ProgressDialogHandler.getInstance().showProcessDialog("Processing", "Performing image warping", 30.0f);
+//
+//        //perform affine warping
+//        AffineWarpingOperator warpingOperator = new AffineWarpingOperator(referenceMat, candidateMatList, imagesToWarpList);
+//        warpingOperator.perform();
+//
+//        MatMemory.releaseAll(candidateMatList, false);
+//        MatMemory.releaseAll(imagesToWarpList, false);
+//        MatMemory.releaseAll(warpingOperator.getWarpedMatList(), true);
+//    }
 
     private void performPerspectiveWarping(Mat referenceMat, Mat[] candidateMatList, Mat[] imagesToWarpList, String[] resultNames) {
         ProgressDialogHandler.getInstance().showProcessDialog("Processing", "Aligning images", 30.0f);

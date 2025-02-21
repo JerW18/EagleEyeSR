@@ -1,5 +1,7 @@
 package neildg.com.eagleeyesr.processing.filters;
 
+import android.util.Log;
+
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
@@ -29,7 +31,7 @@ public class YangFilter implements IOperator {
 
     private Mat[] edgeMatList;
 
-    public YangFilter(Mat[] inputMatList) {
+    public  YangFilter(Mat[] inputMatList) {
         this.inputMatList = inputMatList;
 
         Integer[] f1 = new Integer[]{-1, 0, 1};
@@ -51,6 +53,9 @@ public class YangFilter implements IOperator {
 
        this.edgeMatList = new Mat[this.inputMatList.length];
         for(int i = 0; i < this.inputMatList.length; i++) {
+            Log.d("YangFilter", "Index: " + i);
+            Log.d("YangFilter", "Before performing: " + Core.countNonZero(inputMatList[i]));
+
             Mat inputf1 = new Mat(); Mat inputf2 = new Mat(); Mat inputf3 = new Mat(); Mat inputf4 = new Mat();
             Mat[] combinedFilterList = new Mat[4];
 
@@ -73,6 +78,11 @@ public class YangFilter implements IOperator {
             combinedFilterList[2] = inputf3;
             combinedFilterList[3] = inputf4;
 
+            Log.d("YangFilter", "inputf1: " + Core.countNonZero(inputf1));
+            Log.d("YangFilter", "inputf2: " + Core.countNonZero(inputf2));
+            Log.d("YangFilter", "inputf3: " + Core.countNonZero(inputf3));
+            Log.d("YangFilter", "inputf4: " + Core.countNonZero(inputf4));
+
             YangFilterFusionOperator fusionOperator = new YangFilterFusionOperator(combinedFilterList);
             fusionOperator.perform();
 
@@ -80,6 +90,7 @@ public class YangFilter implements IOperator {
 
             combinedFilterList[0].release(); combinedFilterList[1].release(); combinedFilterList[2].release(); combinedFilterList[3].release();
             edgeMatList[i] = fusionOperator.getResult();
+            Log.d("YangFilter", "fusionOperator result: " + Core.countNonZero(edgeMatList[i]));
 
             //test. Highlight the edges
             /*Core.addWeighted(fusionOperator.getResult(), 1.0, this.inputMatList[i], 1.0, 0.0, this.inputMatList[i]);

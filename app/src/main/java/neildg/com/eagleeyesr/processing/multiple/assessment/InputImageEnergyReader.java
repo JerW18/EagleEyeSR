@@ -3,9 +3,11 @@ package neildg.com.eagleeyesr.processing.multiple.assessment;
 import android.util.Log;
 
 import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
 
 import java.util.concurrent.Semaphore;
 
+import neildg.com.eagleeyesr.camera2.util.Util;
 import neildg.com.eagleeyesr.io.FileImageReader;
 import neildg.com.eagleeyesr.io.FileImageWriter;
 import neildg.com.eagleeyesr.io.ImageFileAttribute;
@@ -33,8 +35,13 @@ public class InputImageEnergyReader extends FlaggingThread {
     public void run() {
         Log.d(TAG, "Started energy reading for " +this.inputImagePath);
 
-        Mat inputMat = FileImageReader.getInstance().imReadFullPath(this.inputImagePath);
+
+        Mat inputMat = Imgcodecs.imread(this.inputImagePath);
+        Log.d(TAG, "Input");
+        Util.printPixelValues(inputMat);
         inputMat = ImageOperator.downsample(inputMat, 0.125f); //downsample
+//        Log.d(TAG, "inputMat Downsampled");
+//        Util.printPixelValues(inputMat);
 
         Mat[] yuvMat = ColorSpaceOperator.convertRGBToYUV(inputMat);
 

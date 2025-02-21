@@ -78,7 +78,7 @@ public class CaptureSRProcessor extends Thread implements NotificationListener {
                 //perform code here
                 if(this.firstImage) {
                     String imageName = ProcessingQueue.getInstance().dequeueImageName();
-                    Log.d(TAG, "Interpolating as initial HR "+imageName);
+                    Log.d(TAG, "Interpolating as initial HR " + imageName);
                     PipelineManager.broadcastPipelineUpdate(imageName, PipelineManager.INITIAL_HR_CREATION);
                     this.produceInitialHRImage(imageName);
                     this.firstImage = false;

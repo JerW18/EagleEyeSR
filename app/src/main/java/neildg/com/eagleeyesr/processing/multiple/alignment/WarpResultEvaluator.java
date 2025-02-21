@@ -6,6 +6,8 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
+import java.util.Arrays;
+
 import neildg.com.eagleeyesr.constants.ParameterConfig;
 import neildg.com.eagleeyesr.io.FileImageReader;
 import neildg.com.eagleeyesr.io.ImageFileAttribute;
@@ -53,6 +55,7 @@ public class WarpResultEvaluator implements IOperator {
     private int[] measureDifference(Mat referenceMat, int referenceSobelMeasure, String[] compareNames) {
         int[] warpedDifferenceList = new int[compareNames.length];
         for(int i = 0; i < compareNames.length; i++) {
+            Log.d(TAG, "Processing file: " + compareNames[i]);
             Mat warpedMat = FileImageReader.getInstance().imReadOpenCV(compareNames[i], ImageFileAttribute.FileType.JPEG);
 
             Mat maskMat = ImageOperator.produceMask(warpedMat);

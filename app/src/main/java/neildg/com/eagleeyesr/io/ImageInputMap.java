@@ -66,4 +66,8 @@ public class ImageInputMap {
         return sharedInstance.imagePath.size();
     }
 
+    public static void getPaths() {
+        Log.d(TAG, "Selected  path: " +sharedInstance.imagePath.toString());
+    };
+
 }
