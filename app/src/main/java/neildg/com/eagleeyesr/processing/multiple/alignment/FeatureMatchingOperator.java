@@ -7,10 +7,9 @@ import org.opencv.core.DMatch;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
-import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
-import org.opencv.features2d.FeatureDetector;
 import org.opencv.features2d.Features2d;
+import org.opencv.features2d.ORB;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +37,8 @@ public class FeatureMatchingOperator {
     private Mat[] lrDescriptorList;
     private MatOfDMatch[] dMatchesList;
 
-    private FeatureDetector featureDetector = FeatureDetector.create(FeatureDetector.ORB);
-    private DescriptorExtractor descriptorExtractor = DescriptorExtractor.create(DescriptorExtractor.ORB);
+    private ORB orb = ORB.create();
+
     private DescriptorMatcher matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
 
     private Mat referenceMat;
@@ -115,12 +114,12 @@ public class FeatureMatchingOperator {
     }
 
     private void detectFeaturesInReference() {
-        //find features in reference LR image
+        // Find features in reference LR image
         this.referenceDescriptor = new Mat();
         this.refKeypoint = new MatOfKeyPoint();
 
-        featureDetector.detect(this.referenceMat, this.refKeypoint);
-        descriptorExtractor.compute(this.referenceMat, this.refKeypoint, this.referenceDescriptor);
+        orb.detectAndCompute(this.referenceMat, new Mat(), this.refKeypoint, this.referenceDescriptor);
+        Log.d(TAG, "Number of keypoints detected in reference: " + getRefKeypoint().size());
     }
 
     /*private void detectFeatures(Mat imgMat, int index) {
@@ -164,8 +163,8 @@ public class FeatureMatchingOperator {
 
         private Mat refDescriptor;
         private Mat comparingMat;
-        private FeatureDetector featureDetector = FeatureDetector.create(FeatureDetector.ORB);
-        private DescriptorExtractor descriptorExtractor = DescriptorExtractor.create(DescriptorExtractor.ORB);
+        private ORB orb = ORB.create();
+
         private DescriptorMatcher matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
 
         private MatOfKeyPoint keypoint;
@@ -181,14 +180,14 @@ public class FeatureMatchingOperator {
 
         @Override
         public void run() {
-
-            //detect features in comparing mat
             this.descriptor = new Mat();
             this.keypoint = new MatOfKeyPoint();
 
-            this.featureDetector.detect(this.comparingMat,this.keypoint);
-            this.descriptorExtractor.compute(this.comparingMat, this.keypoint, this.descriptor);
+            orb.detectAndCompute(this.comparingMat, new Mat(), this.keypoint, this.descriptor);
+            Log.d(TAG, "Number of keypoints detected in comparing image: " + this.keypoint.size());
+
             this.matches = this.matchFeaturesToReference();
+            Log.d(TAG, "Number of matches found: " + this.matches.size());
 
             this.finishWork();
         }

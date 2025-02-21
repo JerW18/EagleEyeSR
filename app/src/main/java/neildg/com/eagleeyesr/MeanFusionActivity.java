@@ -4,8 +4,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 
 import neildg.com.eagleeyesr.io.DirectoryStorage;
@@ -16,23 +14,6 @@ import neildg.com.eagleeyesr.ui.progress_dialog.ProgressDialogHandler;
 public class MeanFusionActivity extends AppCompatActivity {
     private final static String TAG = "MeanFusionActivity";
 
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
-                    Log.i(TAG, "OpenCV reloaded for mean fusion processing");
-                    MeanFusionActivity.this.onSuccessInitialize();
-                } break;
-                default:
-                {
-                    super.onManagerConnected(status);
-                } break;
-            }
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,10 +21,14 @@ public class MeanFusionActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onResume()
-    {
+    public void onResume() {
         super.onResume();
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, mLoaderCallback);
+        if (!OpenCVLoader.initDebug()) {
+            Log.e(TAG, "OpenCV initialization failed");
+        } else {
+            Log.i(TAG, "OpenCV initialized successfully");
+            onSuccessInitialize();
+        }
     }
 
     @Override
@@ -79,5 +64,4 @@ public class MeanFusionActivity extends AppCompatActivity {
 
         ProgressDialogHandler.getInstance().hideUserDialog();*/
     }
-
 }

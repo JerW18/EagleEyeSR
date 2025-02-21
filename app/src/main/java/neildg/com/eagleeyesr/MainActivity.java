@@ -18,7 +18,7 @@ import com.darsh.multipleimageselect.activities.AlbumSelectActivity;
 import com.darsh.multipleimageselect.helpers.Constants;
 import com.darsh.multipleimageselect.models.Image;
 
-import org.opencv.android.*;
+import org.opencv.android.OpenCVLoader;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import neildg.com.eagleeyesr.ui.progress_dialog.ProgressDialogHandler;
 import neildg.com.eagleeyesr.ui.views.AboutScreen;
 import neildg.com.eagleeyesr.ui.views.InfoScreen;
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity {
 
     private final static String TAG = "MainActivity";
 
@@ -45,30 +45,13 @@ public class MainActivity extends AppCompatActivity{
     private final int PERMISSION_READ_EXTERNAL_STORAGE = 3;
 
     static {
-        System.loadLibrary("opencv_java3");
+        System.loadLibrary("opencv_java4"); // Updated to OpenCV 4.x
         System.loadLibrary("opencv_bridge");
     }
-
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
-                    Log.i(TAG, "OpenCV loaded successfully!");
-                } break;
-                default:
-                {
-                    super.onManagerConnected(status);
-                } break;
-            }
-        }
-    };
 
     private InfoScreen infoScreen;
     private AboutScreen aboutScreen;
 
-    //private boolean readGranted = false;
     private boolean writeGranted = false;
 
     @Override
@@ -96,16 +79,12 @@ public class MainActivity extends AppCompatActivity{
     }
 
     @Override
-    public void onResume()
-    {
+    public void onResume() {
         super.onResume();
-        //OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, mLoaderCallback);
         if (!OpenCVLoader.initDebug()) {
-            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, mLoaderCallback);
+            Log.e(TAG, "OpenCV initialization failed");
         } else {
-            Log.d(TAG, "OpenCV library found inside package. Using it!");
-            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+            Log.i(TAG, "OpenCV initialized successfully");
         }
     }
 
@@ -123,33 +102,17 @@ public class MainActivity extends AppCompatActivity{
     }
 
     private void requestPermission() {
-        // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     PERMISSION_WRITE_EXTERNAL_STORAGE);
-
-        }
-        else {
+        } else {
             this.writeGranted = true;
         }
 
-        /*if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                    PERMISSION_READ_EXTERNAL_STORAGE);
-        }
-        else {
-            this.readGranted = true;
-        }*/
-
-
-        if(this.writeGranted) {
-            // Permission has already been granted
+        if (this.writeGranted) {
             DirectoryStorage.getSharedInstance().createDirectory();
             FileImageWriter.initialize(this);
             FileImageReader.initialize(this);
@@ -170,7 +133,6 @@ public class MainActivity extends AppCompatActivity{
                                            String[] permissions, int[] grantResults) {
         switch (requestCode) {
             case PERMISSION_WRITE_EXTERNAL_STORAGE: {
-                // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     this.writeGranted = true;
@@ -179,7 +141,7 @@ public class MainActivity extends AppCompatActivity{
             }
         }
 
-        if(this.writeGranted) {
+        if (this.writeGranted) {
             DirectoryStorage.getSharedInstance().createDirectory();
             FileImageWriter.initialize(this);
             FileImageReader.initialize(this);
@@ -192,8 +154,7 @@ public class MainActivity extends AppCompatActivity{
 
             Button grantPermissionBtn = (Button) this.findViewById(R.id.button_grant_permission);
             grantPermissionBtn.setVisibility(Button.INVISIBLE);
-        }
-        else {
+        } else {
             Toast.makeText(this, "Eagle-Eye needs to read and write temporary images for processing to your storage.", Toast.LENGTH_LONG)
                     .show();
 
@@ -208,16 +169,15 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-
     private void verifyCamera() {
         PackageManager packageManager = ApplicationCore.getInstance().getAppContext().getPackageManager();
-        if(packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA) == false){
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
             Toast.makeText(this, "This device does not have a camera.", Toast.LENGTH_SHORT)
                     .show();
-
             this.hasCamera = false;
         }
     }
+
     private void initializeButtons() {
         Button captureImageBtn = (Button) this.findViewById(R.id.capture_btn);
         captureImageBtn.setOnClickListener(new View.OnClickListener() {
@@ -236,22 +196,11 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
-        /*Button captureExternalBtn = (Button) this.findViewById(R.id.capture_external_btn);
-        captureExternalBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent takePictureIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
-                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivityForResult(takePictureIntent, REQUEST_PICTURE_EXTERNAL);
-                }
-            }
-        });*/
-
         Button pickImagesBtn = (Button) this.findViewById(R.id.select_image_btn);
         pickImagesBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-            MainActivity.this.startImagePickActivity();
+                MainActivity.this.startImagePickActivity();
             }
         });
 
@@ -263,73 +212,27 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
-
-        /*RadioGroup scaleRadioGroup = (RadioGroup) this.findViewById(R.id.scale_radio_group);
-        scaleRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-
-                if(checkedId == R.id.scale_2_btn) {
-                    //Toast.makeText(MainActivity.this, "2x scale", Toast.LENGTH_SHORT).show();
-                    ParameterConfig.setScalingFactor(2);
-                }
-                else if(checkedId == R.id.scale_4_btn) {
-                    //Toast.makeText(MainActivity.this, "4x scale", Toast.LENGTH_SHORT).show();
-                    //ParameterConfig.setScalingFactor(4);
-                }
-            }
-        });*/
-
-
-
-        /*RadioGroup techniqueRadioGroup = (RadioGroup) this.findViewById(R.id.technique_radio_group);
-        techniqueRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                if(checkedId == R.id.single_sr_btn) {
-                    ParameterConfig.setTechnique(ParameterConfig.SRTechnique.SINGLE);
-                    Toast.makeText(MainActivity.this, "Single-Image SR selected", Toast.LENGTH_SHORT).show();
-                }
-                else if(checkedId == R.id.multiple_sr_btn) {
-                    ParameterConfig.setTechnique(ParameterConfig.SRTechnique.MULTIPLE);
-                    Toast.makeText(MainActivity.this, "Multiple-Image SR selected", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });*/
-
-        //scaleRadioGroup.check(R.id.scale_2_btn); ParameterConfig.setScalingFactor(2);
-        //RadioButton scale4Btn = (RadioButton) scaleRadioGroup.findViewById(R.id.scale_4_btn);
-
-        //TODO: temporarily disable functionalities
-        //scale4Btn.setEnabled(false);
-        //captureImageBtn.setEnabled(false);
-
         ParameterConfig.setScalingFactor(2);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == Constants.REQUEST_CODE && resultCode == RESULT_OK && data != null) {
-            //The array list has the image paths of the selected images
             ArrayList<Image> images = data.getParcelableArrayListExtra(Constants.INTENT_EXTRA_IMAGES);
             ArrayList<Uri> imageURIList = new ArrayList<>();
-            for(int i = 0; i < images.size(); i++) {
+            for (int i = 0; i < images.size(); i++) {
                 imageURIList.add(Uri.fromFile(new File(images.get(i).path)));
             }
 
-            if(ParameterConfig.getCurrentTechnique() == ParameterConfig.SRTechnique.MULTIPLE && imageURIList.size() >= 3) {
+            if (ParameterConfig.getCurrentTechnique() == ParameterConfig.SRTechnique.MULTIPLE && imageURIList.size() >= 3) {
                 Log.v("LOG_TAG", "Selected Images " + imageURIList.size());
                 BitmapURIRepository.getInstance().setImageURIList(imageURIList);
                 this.moveToProcessingActivity();
-            }
-            else if(ParameterConfig.getCurrentTechnique() == ParameterConfig.SRTechnique.MULTIPLE && imageURIList.size() < 3) {
+            } else if (ParameterConfig.getCurrentTechnique() == ParameterConfig.SRTechnique.MULTIPLE && imageURIList.size() < 3) {
                 Toast.makeText(this, "You haven't picked enough images. Pick multiple similar images. At least 3.",
                         Toast.LENGTH_LONG).show();
             }
-        }
-
-        else if(requestCode == REQUEST_PICTURE_EXTERNAL) {
-            //if user attempted to use  external camera app, just launch the pick image gallery after taking pictures.
+        } else if (requestCode == REQUEST_PICTURE_EXTERNAL) {
             Log.v(TAG, "Moving to select image activity.");
             this.startImagePickActivity();
         }
@@ -347,5 +250,4 @@ public class MainActivity extends AppCompatActivity{
         intent.putExtra(Constants.INTENT_EXTRA_LIMIT, 10);
         startActivityForResult(intent, Constants.REQUEST_CODE);
     }
-
 }
